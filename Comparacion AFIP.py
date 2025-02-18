@@ -2,6 +2,12 @@
 import pandas as pd
 import gspread
 from gspread_dataframe import set_with_dataframe
+import os
+
+if os.path.exists('C:/Users/Karelys/Desktop/mercovan_automatizaciones'):
+    os.chdir('C:/Users/Karelys/Desktop/mercovan_automatizaciones')
+
+print('Abriendo datos de mercovan...')
 compras_mercovan = pd.read_excel('compras mercovan.xlsx', header=1)
 
 pd.set_option('display.max_rows', 10)
@@ -20,6 +26,7 @@ def process_recibidos_xlsx(file_path):
     df_recibidos[numeric_columns] = df_recibidos[numeric_columns].apply(pd.to_numeric, errors='coerce').fillna(0) # .astype(int)
     return df_recibidos
 
+print('Abriendo datos de AFIP...')
 compras_afip = process_recibidos_xlsx('compras afip.xlsx')
 
 compras_afip = compras_afip.rename(columns={'Número Desde': 'Comprobante', 
@@ -31,7 +38,7 @@ compras_mercovan['Comprobante'] = compras_mercovan.loc[:, 'Comprobante'].astype(
 compras_mercovan.loc[:, 'CUIT'] = compras_mercovan['CUIT'].apply(lambda x: '{:.0f}'.format(x))
 compras_afip.loc[:, 'Comprobante'] = compras_afip['Comprobante'].astype(str)
 compras_afip.loc[:, 'CUIT'] = compras_afip['CUIT'].astype(str)
-
+print('Chequeando facturas faltantes...')
 mismatches_mercovan = compras_mercovan[~compras_mercovan.set_index(['Comprobante', 'CUIT']).index.isin(compras_afip.set_index(['Comprobante', 'CUIT']).index)]
 mismatches_afip = compras_afip[~compras_afip.set_index(['Comprobante', 'CUIT']).index.isin(compras_mercovan.set_index(['Comprobante', 'CUIT']).index)]
 
@@ -54,7 +61,7 @@ print("Facturas que faltan en AFIP:")
 print(mismatches_mercovan)
 print("\n\nFacturas que faltan en Mercovan:")
 print(mismatches_afip)
-
+print("Subiendo a sheets")
 gc = gspread.service_account(filename='credenciales_gsheets.json')
 google_sheet = gc.create(f'Comparacion compras Mercovan-AFIP {pd.Timestamp.now().date()}')
 
@@ -81,3 +88,4 @@ except gspread.exceptions.WorksheetNotFound:
 google_sheet.share('marajadesantelmo@gmail.com', perm_type='user', role='writer')
 google_sheet.share('manuel@dassa.com.ar', perm_type='user', role='writer')
 google_sheet.share('jose@mercovan.com.ar', perm_type='user', role='writer')
+google_sheet.share('karelys@mercovan.com.ar', perm_type='user', role='writer')
